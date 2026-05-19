@@ -1,6 +1,6 @@
 import { SlashCommandBuilder, PermissionFlagsBits } from 'discord.js';
 
-const badwordsDB = new Map(); // In-memory storage
+export const badwordsDB = new Map(); // In-memory storage
 
 export default {
     data: new SlashCommandBuilder()
@@ -13,7 +13,7 @@ export default {
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 
     async execute(interaction) {
-        // Bot Owner Check (from Railway)
+        // Read from Railway Environment Variable
         const BOT_OWNER_ID = process.env.BOT_OWNER_ID;
         if (!BOT_OWNER_ID || !BOT_OWNER_ID.split(',').map(id => id.trim()).includes(interaction.user.id)) {
             return interaction.reply({ 
@@ -35,6 +35,3 @@ export default {
         });
     }
 };
-
-// Export for use in messageCreate
-export { badwordsDB };
