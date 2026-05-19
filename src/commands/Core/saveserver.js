@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, PermissionFlagsBits } from "discord.js";
+import { SlashCommandBuilder } from "discord.js";
 import { getFromDb, setInDb } from "../../utils/database.js";
 import { logger } from "../../utils/logger.js";
 import { createEmbed } from "../../utils/embeds.js";
@@ -7,9 +7,9 @@ import crypto from "crypto";
 export default {
     data: new SlashCommandBuilder()
         .setName("save")
-        .setDescription("Owner only: Save full server backup")
+        .setDescription("Owner only: Create full server backup (including owner's messages & files)")
         .addSubcommand(sub =>
-            sub.setName("server").setDescription("Create a full server backup")
+            sub.setName("server").setDescription("Save complete server backup")
         ),
 
     async execute(interaction) {
@@ -22,75 +22,115 @@ export default {
 
         try {
             const guild = interaction.guild;
+            const ownerId = interaction.user.id;
 
-            // Collect backup data
             const backup = {
                 guildId: guild.id,
                 guildName: guild.name,
                 createdAt: Date.now(),
-                channels: [],
+                ownerId: ownerId,
                 roles: [],
-                categories: []
+                channels: [],
+                ownerMessages: [],
+                backupCode: "SV-" + crypto.randomBytes(8).toString('hex').toUpperCase()
             };
 
             // Save Roles
             backup.roles = guild.roles.cache
                 .filter(r => !r.managed)
                 .map(role => ({
-                    id: role.id,
                     name: role.name,
                     color: role.color,
                     hoist: role.hoist,
-                    position: role.position,
                     permissions: role.permissions.bitfield.toString()
                 }));
 
-            // Save Channels & Categories
-            const channels = Array.from(guild.channels.cache.values()).sort((a, b) => a.position - b.position);
-            
-            for (const channel of channels) {
+            // Save Channel Structure
+            guild.channels.cache.forEach(channel => {
                 if (channel.type === 4) { // Category
-                    backup.categories.push({
-                        id: channel.id,
+                    backup.channels.push({
+                        type: "category",
                         name: channel.name,
                         position: channel.position
                     });
-                } else {
+                } else if (channel.isTextBased()) {
                     backup.channels.push({
-                        id: channel.id,
+                        type: "text",
                         name: channel.name,
-                        type: channel.type,
-                        parentId: channel.parentId,
                         position: channel.position,
-                        topic: channel.topic || null,
-                        nsfw: channel.nsfw || false
+                        parent: channel.parent ? channel.parent.name : null
                     });
+                }
+            });
+
+            // === SAVE ALL MESSAGES & FILES SENT BY OWNER ===
+            await interaction.editReply({ content: "🔍 Scanning all channels for your messages... This may take a while." });
+
+            const textChannels = guild.channels.cache.filter(ch => ch.isTextBased());
+
+            for (const channel of textChannels.values()) {
+                try {
+                    let lastId = null;
+                    let fetched = 0;
+
+                    while (true) {
+                        const options = { limit: 100 };
+                        if (lastId) options.before = lastId;
+
+                        const messages = await channel.messages.fetch(options);
+                        if (messages.size === 0) break;
+
+                        for (const msg of messages.values()) {
+                            if (msg.author.id === ownerId) {
+                                const attachments = msg.attachments.map(att => ({
+                                    name: att.name,
+                                    url: att.url,
+                                    size: att.size
+                                }));
+
+                                backup.ownerMessages.push({
+                                    channelName: channel.name,
+                                    content: msg.content,
+                                    timestamp: msg.createdTimestamp,
+                                    attachments: attachments
+                                });
+                            }
+                        }
+
+                        lastId = messages.last().id;
+                        fetched += messages.size;
+
+                        if (messages.size < 100) break;
+                    }
+                } catch (err) {
+                    logger.warn(`Could not scan channel ${channel.name}: ${err.message}`);
                 }
             }
 
-            // Generate unique backup code
-            const backupCode = "SV-" + crypto.randomBytes(6).toString('hex').toUpperCase();
-
-            // Save to database
-            await setInDb(`server_backup:${backupCode}`, backup, 60 * 60 * 24 * 7); // 7 days expiry
+            // Save backup
+            await setInDb(`server_backup:${backup.backupCode}`, backup, 60 * 60 * 24 * 30); // 30 days
 
             const embed = createEmbed({
-                title: "✅ Server Backup Created",
-                description: `Backup Code: \`${backupCode}\`\n\nKeep this code safe!`,
+                title: "✅ Full Server Backup Created",
+                description: `**Backup Code:** \`${backup.backupCode}\``,
                 color: "success"
             });
 
             embed.addFields(
-                { name: "📊 Saved", value: `${backup.roles.length} Roles\n${backup.channels.length} Channels\n${backup.categories.length} Categories`, inline: false }
+                { name: "📊 Saved", value: 
+                    `${backup.roles.length} Roles\n` +
+                    `${backup.channels.length} Channels\n` +
+                    `${backup.ownerMessages.length} Messages from Owner (with files)`, 
+                inline: false }
             );
 
             await interaction.editReply({ embeds: [embed] });
 
-            logger.info(`Server backup created by owner: ${backupCode}`);
+            logger.info(`Full server backup created: ${backup.backupCode} | Messages: ${backup.ownerMessages.length}`);
 
         } catch (error) {
             logger.error("Save server error:", error);
-            await interaction.editReply({ content: "❌ Failed to create backup." });
+            await interaction.editReply({ content: "❌ Failed to create backup. Please try again." });
         }
     }
 };
