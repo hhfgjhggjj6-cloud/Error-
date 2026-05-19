@@ -1,8 +1,9 @@
-const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits } = require('discord.js');
-const { QuickDB } = require('quick.db');
+import { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits } from 'discord.js';
+import { QuickDB } from 'quick.db';
+
 const db = new QuickDB();
 
-module.exports = {
+export default {
     data: new SlashCommandBuilder()
         .setName('whitelist')
         .setDescription('Whitelist a user (Owner Only)')
@@ -12,10 +13,10 @@ module.exports = {
                 .setDescription('Permission Level')
                 .setRequired(true)
                 .addChoices(
-                    { name: 'Full Access (Everything)', value: 'full' },
+                    { name: 'Full Access (Can do everything)', value: 'full' },
                     { name: 'Moderator', value: 'mod' },
-                    { name: 'Safe (Normal User)', value: 'safe' },
-                    { name: 'Spam Allowed', value: 'spam' }
+                    { name: 'Safe (Normal)', value: 'safe' },
+                    { name: 'Spam Allowed Only', value: 'spam' }
                 ))
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 
@@ -30,9 +31,9 @@ module.exports = {
         await db.set(`whitelist.${interaction.guild.id}.${target.id}`, level);
 
         const embed = new EmbedBuilder()
-            .setTitle("✅ User Whitelisted")
+            .setTitle("✅ User Whitelisted Successfully")
             .setColor("Gold")
-            .setDescription(`**${target.tag}** has been whitelisted with level: **${level}**`);
+            .setDescription(`**${target.tag}** (${target.id})\n**Level:** ${level}`);
 
         await interaction.reply({ embeds: [embed] });
     }
