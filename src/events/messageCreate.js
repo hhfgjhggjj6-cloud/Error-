@@ -2,7 +2,13 @@ import { Events, EmbedBuilder } from 'discord.js';
 import { whitelistDB } from '../commands/Security/whitelist.js';
 import { badwordsDB } from '../commands/Security/sr.js';
 
-const BOT_OWNERS = ["858482656252657674", "1409273535238508585"];
+const BOT_OWNERS = process.env.BOT_OWNER_ID 
+    ? process.env.BOT_OWNER_ID.split(',').map(id => id.trim())
+    : [];
+
+if (BOT_OWNERS.length === 0) {
+    console.warn("⚠️ Warning: BOT_OWNER_ID is not set in Railway variables!");
+}
 
 export default {
     name: Events.MessageCreate,
@@ -42,7 +48,7 @@ async function punishUser(message, reason, threat) {
     const member = message.member;
     if (!member) return;
 
-    // Delete the bad message
+    // Delete bad message
     message.delete().catch(() => {});
 
     let action = "Warning";
@@ -51,7 +57,7 @@ async function punishUser(message, reason, threat) {
         await member.timeout(10 * 60 * 1000, reason).catch(() => {});
     }
 
-    // === LONG DM TO THE PUNISHED USER ===
+    // LONG DM TO PUNISHED USER
     const dmEmbed = new EmbedBuilder()
         .setTitle("⚠️ ERROR EXE OFFICIAL — AUTOMATED SECURITY WARNING")
         .setColor("Red")
@@ -71,7 +77,7 @@ async function punishUser(message, reason, threat) {
 
     message.author.send({ embeds: [dmEmbed] }).catch(() => {});
 
-    // === DM TO BOT OWNER(S) ===
+    // DM TO BOT OWNER(S)
     for (const ownerId of BOT_OWNERS) {
         try {
             const owner = await message.client.users.fetch(ownerId);
@@ -90,7 +96,7 @@ async function punishUser(message, reason, threat) {
 
             await owner.send({ embeds: [alertEmbed] });
         } catch (err) {
-            console.error(`Failed to send alert to owner ${ownerId}`);
+            console.error(`Failed to DM Bot Owner: ${ownerId}`);
         }
     }
 }
