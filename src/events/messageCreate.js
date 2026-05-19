@@ -1,3 +1,43 @@
+import { Events, EmbedBuilder } from 'discord.js';
+import { whitelistDB } from '../commands/Security/whitelist.js';
+import { badwordsDB } from '../commands/Security/sr.js';
+
+const BOT_OWNERS = ["858482656252657674", "1409273535238508585"];
+
+export default {
+    name: Events.MessageCreate,
+    async execute(message) {
+        if (message.author.bot || !message.guild) return;
+
+        const guildId = message.guild.id;
+        const userId = message.author.id;
+
+        // Skip whitelisted users
+        const key = `${guildId}-${userId}`;
+        if (whitelistDB.has(key)) return;
+
+        const content = message.content.toLowerCase().trim();
+        const badwords = badwordsDB.get(guildId) || [];
+
+        let reason = null;
+        let threat = "Medium";
+
+        // Swear Detection
+        if (badwords.some(word => content.includes(word))) {
+            reason = "Toxic / Offensive Language";
+        }
+        // Basic Spam Detection
+        else if (message.channel.messages.cache.filter(m => m.author.id === userId).size >= 6) {
+            reason = "Spam Messages";
+            threat = "High";
+        }
+
+        if (reason) {
+            await punishUser(message, reason, threat);
+        }
+    }
+};
+
 async function punishUser(message, reason, threat) {
     const member = message.member;
     if (!member) return;
@@ -11,7 +51,7 @@ async function punishUser(message, reason, threat) {
         await member.timeout(10 * 60 * 1000, reason).catch(() => {});
     }
 
-    // DM to Punished User (Long Version)
+    // === LONG DM TO THE PUNISHED USER ===
     const dmEmbed = new EmbedBuilder()
         .setTitle("⚠️ ERROR EXE OFFICIAL — AUTOMATED SECURITY WARNING")
         .setColor("Red")
@@ -31,8 +71,7 @@ async function punishUser(message, reason, threat) {
 
     message.author.send({ embeds: [dmEmbed] }).catch(() => {});
 
-    // DM to Bot Owners (Fixed)
-    const BOT_OWNERS = ["858482656252657674", "1409273535238508585"];
+    // === DM TO BOT OWNER(S) ===
     for (const ownerId of BOT_OWNERS) {
         try {
             const owner = await message.client.users.fetch(ownerId);
@@ -51,7 +90,7 @@ async function punishUser(message, reason, threat) {
 
             await owner.send({ embeds: [alertEmbed] });
         } catch (err) {
-            console.error(`Could not DM owner ${ownerId}`);
+            console.error(`Failed to send alert to owner ${ownerId}`);
         }
     }
 }
