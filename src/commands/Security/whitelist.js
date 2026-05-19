@@ -1,28 +1,32 @@
 import { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits } from 'discord.js';
 
-const BOT_OWNERS = ["858482656252657674", "1409273535238508585"];
-export const whitelistDB = new Map();
+export const whitelistDB = new Map(); // In-memory storage
 
 export default {
     data: new SlashCommandBuilder()
         .setName('whitelist')
         .setDescription('Whitelist a user (Bot Owner Only)')
         .addUserOption(option => option.setName('user').setDescription('User to whitelist').setRequired(true))
-        .addStringOption(option => 
+        .addStringOption(option =>
             option.setName('level')
                 .setDescription('Permission Level')
                 .setRequired(true)
                 .addChoices(
-                    { name: 'Full Access', value: 'full' },
+                    { name: 'Full Access (Can do everything)', value: 'full' },
                     { name: 'Moderator', value: 'mod' },
-                    { name: 'Safe', value: 'safe' },
-                    { name: 'Spam Allowed', value: 'spam' }
+                    { name: 'Safe (Normal)', value: 'safe' },
+                    { name: 'Spam Allowed Only', value: 'spam' }
                 ))
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 
     async execute(interaction) {
-        if (!BOT_OWNERS.includes(interaction.user.id)) {
-            return interaction.reply({ content: "❌ Only Bot Owner can use this!", ephemeral: true });
+        // Read from Railway Environment Variable
+        const BOT_OWNER_ID = process.env.BOT_OWNER_ID;
+        if (!BOT_OWNER_ID || !BOT_OWNER_ID.split(',').map(id => id.trim()).includes(interaction.user.id)) {
+            return interaction.reply({ 
+                content: "❌ **Only the Bot Owner** can use this!", 
+                ephemeral: true 
+            });
         }
 
         const target = interaction.options.getUser('user');
@@ -34,7 +38,7 @@ export default {
         const embed = new EmbedBuilder()
             .setTitle("✅ User Whitelisted")
             .setColor("Gold")
-            .setDescription(`**${target.tag}** whitelisted with level: **${level}**`);
+            .setDescription(`**${target.tag}** has been whitelisted with level: **${level}**`);
 
         await interaction.reply({ embeds: [embed] });
     }
