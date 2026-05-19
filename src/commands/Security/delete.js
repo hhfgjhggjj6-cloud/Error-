@@ -3,7 +3,7 @@ import { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder } from 'discord.
 export default {
     data: new SlashCommandBuilder()
         .setName('delete')
-        .setDescription('Delete all messages of a user')
+        .setDescription('Delete messages of a user')
         .addUserOption(opt => opt.setName('user').setDescription('Target user').setRequired(true))
         .addStringOption(opt => 
             opt.setName('all_channels')
@@ -17,7 +17,7 @@ export default {
 
     async execute(interaction) {
         if (interaction.user.id !== interaction.guild.ownerId) {
-            return interaction.reply({ content: "❌ Only Server Owner can use this command!", ephemeral: true });
+            return interaction.reply({ content: "❌ Only Server Owner can use this!", ephemeral: true });
         }
 
         const target = interaction.options.getUser('user');
@@ -35,8 +35,8 @@ export default {
         }
 
         const embed = new EmbedBuilder()
-            .setTitle("✅ Messages Deleted")
-            .setDescription(`All recent messages from **${target.tag}** have been removed.`)
+            .setTitle("✅ Deletion Completed")
+            .setDescription(`Messages from **${target.tag}** have been deleted.`)
             .setColor("Green");
 
         await interaction.editReply({ content: null, embeds: [embed] });
@@ -51,5 +51,5 @@ async function deleteUserMessages(channel, userId) {
         if (userMsgs.size > 0) {
             await channel.bulkDelete(userMsgs, true).catch(() => {});
         }
-    } catch (err) {}
+    } catch {}
 }
