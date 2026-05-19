@@ -1,9 +1,9 @@
-const { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder } = require('discord.js');
+import { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder } from 'discord.js';
 
-module.exports = {
+export default {
     data: new SlashCommandBuilder()
         .setName('delete')
-        .setDescription('Delete messages of a user')
+        .setDescription('Delete all messages of a user')
         .addUserOption(opt => opt.setName('user').setDescription('Target user').setRequired(true))
         .addStringOption(opt => 
             opt.setName('all_channels')
@@ -16,13 +16,14 @@ module.exports = {
         .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages),
 
     async execute(interaction) {
-        if (interaction.user.id !== interaction.guild.ownerId) 
-            return interaction.reply({ content: "❌ Only Server Owner can use this!", ephemeral: true });
+        if (interaction.user.id !== interaction.guild.ownerId) {
+            return interaction.reply({ content: "❌ Only Server Owner can use this command!", ephemeral: true });
+        }
 
         const target = interaction.options.getUser('user');
         const allChannels = interaction.options.getString('all_channels') === 'yes';
 
-        await interaction.reply({ content: `🧹 Deleting messages of **${target.tag}**...`, ephemeral: true });
+        await interaction.reply({ content: `🧹 Deleting messages from **${target.tag}**...`, ephemeral: true });
 
         if (allChannels) {
             const channels = interaction.guild.channels.cache.filter(ch => ch.isTextBased());
@@ -34,11 +35,11 @@ module.exports = {
         }
 
         const embed = new EmbedBuilder()
-            .setTitle("✅ Deletion Complete")
-            .setDescription(`Messages from **${target.tag}** have been deleted.`)
+            .setTitle("✅ Messages Deleted")
+            .setDescription(`All recent messages from **${target.tag}** have been removed.`)
             .setColor("Green");
 
-        interaction.editReply({ content: null, embeds: [embed] });
+        await interaction.editReply({ content: null, embeds: [embed] });
     }
 };
 
@@ -47,6 +48,8 @@ async function deleteUserMessages(channel, userId) {
     try {
         const messages = await channel.messages.fetch({ limit: 100 });
         const userMsgs = messages.filter(m => m.author.id === userId);
-        if (userMsgs.size > 0) await channel.bulkDelete(userMsgs, true);
-    } catch {}
+        if (userMsgs.size > 0) {
+            await channel.bulkDelete(userMsgs, true).catch(() => {});
+        }
+    } catch (err) {}
 }
