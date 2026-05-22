@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder } from 'discord.js';
+import { SlashCommandBuilder, EmbedBuilder } from 'discord.js';
 import { whitelistDB } from './whitelist.js';
 
 export default {
@@ -20,7 +20,10 @@ export default {
         const level = whitelistDB.get(key);
 
         if (!level || !['full', 'botaccess'].includes(level)) {
-            return interaction.reply({ content: "❌ You don't have permission to use this command!", ephemeral: true });
+            return interaction.reply({ 
+                content: "❌ You need **Bot Access** or higher to use this command!", 
+                ephemeral: true 
+            });
         }
 
         const target = interaction.options.getUser('user');
