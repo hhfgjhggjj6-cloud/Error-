@@ -1,4 +1,5 @@
 import { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder } from 'discord.js';
+import { whitelistDB } from './whitelist.js';
 
 export default {
     data: new SlashCommandBuilder()
@@ -12,12 +13,14 @@ export default {
                     { name: 'Yes (Everywhere)', value: 'yes' },
                     { name: 'No (Only this channel)', value: 'no' }
                 )
-                .setRequired(true))
-        .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages),
+                .setRequired(true)),
 
     async execute(interaction) {
-        if (interaction.user.id !== interaction.guild.ownerId) {
-            return interaction.reply({ content: "❌ Only Server Owner can use this!", ephemeral: true });
+        const key = `${interaction.guild.id}-${interaction.user.id}`;
+        const level = whitelistDB.get(key);
+
+        if (!level || !['full', 'botaccess'].includes(level)) {
+            return interaction.reply({ content: "❌ You don't have permission to use this command!", ephemeral: true });
         }
 
         const target = interaction.options.getUser('user');
