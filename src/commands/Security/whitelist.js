@@ -10,7 +10,7 @@ export default {
         .addUserOption(option => option.setName('user').setDescription('User to whitelist').setRequired(true))
         .addStringOption(option => 
             option.setName('password')
-                .setDescription('Enter password (Mithil123321)')
+                .setDescription('Enter password (Here)')
                 .setRequired(true))
         .addStringOption(option => 
             option.setName('level')
