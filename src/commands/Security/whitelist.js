@@ -1,6 +1,6 @@
 import { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits } from 'discord.js';
 
-const whitelistDB = new Map(); // In-memory storage
+const whitelistDB = new Map();
 
 export default {
     data: new SlashCommandBuilder()
@@ -39,5 +39,4 @@ export default {
     }
 };
 
-// Export for use in other files
 export { whitelistDB };
