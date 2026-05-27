@@ -1,3 +1,37 @@
+import { Events, EmbedBuilder } from 'discord.js';
+import { whitelistDB } from '../commands/Security/whitelist.js';
+import { badwordsDB } from '../commands/Security/sr.js';
+
+export default {
+    name: Events.MessageCreate,
+    async execute(message) {
+        if (message.author.bot || !message.guild) return;
+
+        const guildId = message.guild.id;
+        const userId = message.author.id;
+        const key = `${guildId}-${userId}`;
+
+        // Skip punishment for whitelisted users
+        if (whitelistDB.has(key)) return;
+
+        const content = message.content.toLowerCase().trim();
+        const badwords = badwordsDB.get(guildId) || [];
+
+        let reason = null;
+        let threat = "High";
+
+        if (badwords.some(word => content.includes(word))) {
+            reason = "Toxic / Offensive Language";
+        } else if (message.channel.messages.cache.filter(m => m.author.id === userId).size >= 5) {
+            reason = "Spam Messages";
+        }
+
+        if (reason) {
+            await punishUser(message, reason, threat);
+        }
+    }
+};
+
 async function punishUser(message, reason, threat) {
     const member = message.member;
     if (!member) return;
@@ -25,48 +59,67 @@ async function punishUser(message, reason, threat) {
         )
         .addFields({
             name: "━━━━━━━━━━━━━━",
-            value: "**Action Taken:** Timeout (30 Minutes)\n**Reason:** Zero Tolerance Mode"
-        });
+            value: "**You have been punished for violating server rules.**\nOur system has **ZERO TOLERANCE**."
+        })
+        .setFooter({ text: "— ERROR EXE OFFICIAL SECURITY SYSTEM" });
 
     message.author.send({ embeds: [dmEmbed] }).catch(() => {});
 
     // ========================
-    // NEW: STAFF ALERT + DELETED MESSAGE "SCREENSHOT"
+    // STAFF ALERT + DELETED MESSAGE SCREENSHOT
     // ========================
 
-    const staffAlert = new EmbedBuilder()
-        .setTitle("ERROR EXE OFFICIAL — STAFF ALERT")
+    const staffBaseEmbed = new EmbedBuilder()
+        .setTitle("🚨 ERROR EXE OFFICIAL — STAFF ALERT")
+        .setColor("Orange")
         .addFields(
-            { name: "Punished User", value: `${message.author.tag} (${message.author.id})`, inline: false },
-            { name: "Channel", value: `${message.channel}`, inline: false },
-            { name: "Reason", value: reason, inline: false },
-            { name: "Action Taken", value: "Timeout (30 Minutes)", inline: false },
-            { name: "Time", value: `<t:${Math.floor(Date.now() / 1000)}:F>`, inline: false }
+            { name: "👤 Punished User", value: `${message.author.tag} (${message.author.id})` },
+            { name: "📍 Channel", value: `<#${message.channel.id}>` },
+            { name: "📌 Reason", value: reason },
+            { name: "🤖 Action Taken", value: "Timeout (30 Minutes)" },
+            { name: "🕒 Time", value: `<t:${Math.floor(Date.now()/1000)}:F>` }
         )
-        .setColor("Red")
-        .setTimestamp();
+        .setFooter({ text: "Zero Tolerance Mode • ERROR EXE OFFICIAL" });
 
-    // Deleted Message Screenshot Embed
+    // === Deleted Message "Screenshot" Embed ===
     const deletedMsgEmbed = new EmbedBuilder()
         .setAuthor({
             name: `${message.author.tag} - Deleted Message`,
             iconURL: message.author.displayAvatarURL({ dynamic: true })
         })
-        .setDescription(message.content?.length > 0 ? message.content : "*No text content*")
+        .setDescription(
+            message.content?.length > 4096 
+                ? message.content.slice(0, 4090) + "..." 
+                : (message.content?.length > 0 ? message.content : "*No text content*")
+        )
         .setFooter({ text: `Message ID: ${message.id}` })
         .setTimestamp(message.createdTimestamp)
-        .setColor("Orange");
+        .setColor("Red");
 
     if (message.attachments.size > 0) {
         deletedMsgEmbed.setImage(message.attachments.first().url);
     }
 
-    const logChannel = message.guild.channels.cache.get("YOUR_STAFF_LOG_CHANNEL_ID_HERE"); // ← Change this
+    // Send to ALL Whitelisted Users
+    const guildId = message.guild.id;
+    for (const [mapKey, level] of whitelistDB.entries()) {
+        if (mapKey.startsWith(guildId + "-")) {
+            const staffId = mapKey.split("-")[1];
+            const staffUser = await message.client.users.fetch(staffId).catch(() => null);
+           
+            if (staffUser) {
+                staffUser.send({ 
+                    embeds: [staffBaseEmbed, deletedMsgEmbed] 
+                }).catch(() => {});
+            }
+        }
+    }
 
-    if (logChannel) {
-        await logChannel.send({
-            content: "Zero Tolerance Mode • ERROR EXE OFFICIAL",
-            embeds: [staffAlert, deletedMsgEmbed]
-        }).catch(console.error);
+    // Also send to Server Owner
+    const owner = await message.client.users.fetch(message.guild.ownerId).catch(() => null);
+    if (owner) {
+        owner.send({ 
+            embeds: [staffBaseEmbed, deletedMsgEmbed] 
+        }).catch(() => {});
     }
 }
