@@ -1,4 +1,4 @@
-﻿import 'dotenv/config';
+import 'dotenv/config';
 import { Client, Collection, GatewayIntentBits } from 'discord.js';
 import { REST } from '@discordjs/rest';
 import express from 'express';
@@ -17,19 +17,13 @@ class TitanBot extends Client {
   constructor() {
     super({
       intents: [
-        
-        GatewayIntentBits.Guilds,                        
-        GatewayIntentBits.GuildMembers,                 
-        
-        
-        GatewayIntentBits.GuildMessages,                
-        GatewayIntentBits.GuildMessageReactions,        
-        GatewayIntentBits.MessageContent,               
-        
-        GatewayIntentBits.GuildVoiceStates,             
-        
-        
-        GatewayIntentBits.GuildBans,                    
+        GatewayIntentBits.Guilds,
+        GatewayIntentBits.GuildMembers,
+        GatewayIntentBits.GuildMessages,
+        GatewayIntentBits.GuildMessageReactions,
+        GatewayIntentBits.MessageContent,
+        GatewayIntentBits.GuildVoiceStates,
+        GatewayIntentBits.GuildBans,
       ],
     });
 
@@ -83,6 +77,9 @@ class TitanBot extends Client {
       startupLog('Logging into Discord...');
       await this.login(this.config.bot.token);
       startupLog('Discord login successful');
+      
+      // Extra delay to ensure ready event fires properly
+      await new Promise(resolve => setTimeout(resolve, 3000));
       
       startupLog('Registering slash commands...');
       await this.registerCommands();
@@ -258,7 +255,6 @@ class TitanBot extends Client {
           }
         }
         
-        // Save cleaned counters if any were orphaned
         if (orphanedCounters.length > 0) {
           await saveServerCounters(this, guildId, validCounters);
           logger.info(`Cleaned up ${orphanedCounters.length} orphaned counter(s) from guild ${guildId} during scheduled update`);
@@ -314,12 +310,10 @@ class TitanBot extends Client {
     logger.info(`${'='.repeat(60)}`);
 
     try {
-      
       logger.info('Stopping cron jobs...');
       cron.getTasks().forEach(task => task.stop());
       logger.info('✅ Cron jobs stopped');
 
-      // Close database connection
       if (this.db && this.db.db) {
         logger.info('Closing database connection...');
         try {
@@ -332,21 +326,18 @@ class TitanBot extends Client {
         }
       }
 
-      
       logger.info('Destroying Discord client...');
       if (this.isReady()) {
         try {
           this.destroy();
           logger.info('✅ Discord client destroyed');
         } catch (error) {
-          
-          
           logger.warn('Discord client destroy warning (non-critical):', error.message);
         }
       }
 
       logger.info('✅ Graceful shutdown complete');
-  shutdownLog('Bot stopped successfully.');
+      shutdownLog('Bot stopped successfully.');
       process.exit(0);
     } catch (error) {
       logger.error('Error during graceful shutdown:', error);
@@ -381,6 +372,3 @@ try {
 }
 
 export default TitanBot;
-
-
-
