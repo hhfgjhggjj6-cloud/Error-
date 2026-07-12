@@ -10,48 +10,41 @@ export default {
     .addSubcommand(sub =>
       sub
         .setName("setup")
-        .setDescription("Set up the welcome channel")
-        .addChannelOption(option =>
-          option
-            .setName("channel")
-            .setDescription("The channel for welcome messages")
-            .setRequired(true)
+        .setDescription("Set welcome channel")
+        .addChannelOption(opt => 
+          opt.setName("channel")
+             .setDescription("Welcome channel")
+             .setRequired(true)
         )
     )
 
     .addSubcommand(sub =>
       sub
         .setName("remove")
-        .setDescription("Remove all welcome setups")
+        .setDescription("Remove welcome setup")
     ),
 
   async execute(interaction) {
-    const subcommand = interaction.options.getSubcommand();
+    const sub = interaction.options.getSubcommand();
 
     try {
-      if (subcommand === "remove") {
-        await interaction.reply({
-          content: "✅ **All welcome setups have been removed successfully!**\nYou can now setup again with `/welcome setup`.",
-          ephemeral: false
-        });
-        logger.info(`Welcome system removed by ${interaction.user.tag}`);
+      if (sub === "remove") {
+        await interaction.reply("✅ All welcome setups cleared!");
+        logger.info(`Welcome removed by ${interaction.user.tag}`);
       } 
-      else if (subcommand === "setup") {
+      else if (sub === "setup") {
         const channel = interaction.options.getChannel("channel");
-
+        
+        // Force update without checking "already exists"
         await interaction.reply({
-          content: `✅ **Welcome channel updated!**\nAll new members will be welcomed in ${channel}`,
+          content: `✅ Welcome channel set to ${channel} successfully!`,
           ephemeral: false
         });
-
-        logger.info(`Welcome channel set to #${channel.name} by ${interaction.user.tag}`);
+        logger.info(`Welcome setup to #${channel.name} by ${interaction.user.tag}`);
       }
     } catch (error) {
-      logger.error("Error in /welcome command:", error);
-      await interaction.reply({
-        content: "❌ An error occurred. Please try again.",
-        ephemeral: true
-      });
+      logger.error("Welcome command error:", error);
+      await interaction.reply("❌ Error occurred.");
     }
-  },
+  }
 };
