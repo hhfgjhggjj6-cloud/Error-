@@ -1,5 +1,5 @@
 import { Events, EmbedBuilder } from "discord.js";
-import { getOrdinal } from "../utils/ordinal.js";   // We'll create this
+import { getOrdinal } from "../utils/ordinal.js";
 import config from "../config/application.js";
 import { logger } from "../utils/logger.js";
 
@@ -11,32 +11,33 @@ export default {
       const memberCount = guild.memberCount;
       const ordinal = getOrdinal(memberCount);
 
-      // Welcome Channel (change if you have different setting)
-      const welcomeChannel = guild.channels.cache.find(
-        ch => ch.name.toLowerCase().includes("welcome") || 
-              ch.name.toLowerCase().includes("general")
+      // Find welcome channel (you can change logic)
+      let welcomeChannel = guild.channels.cache.find(ch => 
+        ch.name.toLowerCase().includes("welcome") || 
+        ch.name.toLowerCase().includes("general")
       );
 
       if (!welcomeChannel) return;
 
-      const welcomeEmbed = new EmbedBuilder()
+      const isBot = member.user.bot ? "🤖 Bot" : "👤 Member";
+
+      const embed = new EmbedBuilder()
         .setColor(config.bot.embeds.colors.primary || "#5865F2")
-        .setTitle("🎉 New Member!")
+        .setTitle(`🎉 Welcome to ${guild.name}!`)
         .setDescription(
-          `**WELCOME ${member} To The SERVER!**\n` +
-          `You are the **${ordinal}** MEMBER!`
+          `**${member} has joined the server!**\n` +
+          `${isBot}\n` +
+          `You are the **${ordinal}** member!`
         )
-        .setThumbnail(member.user.displayAvatarURL({ dynamic: true }))
+        .setThumbnail(member.user.displayAvatarURL({ dynamic: true, size: 256 }))
         .setTimestamp();
 
-      await welcomeChannel.send({ embeds: [welcomeEmbed] });
+      await welcomeChannel.send({ embeds: [embed] });
 
-      // Optional: Auto role
-      // const autoRole = guild.roles.cache.get("ROLE_ID_HERE");
-      // if (autoRole) await member.roles.add(autoRole);
+      logger.info(`Welcomed ${member.user.tag} as ${ordinal} member`);
 
     } catch (error) {
-      logger.error("Error in welcome event:", error);
+      logger.error("Welcome event error:", error);
     }
   },
 };
