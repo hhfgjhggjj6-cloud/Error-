@@ -9,14 +9,9 @@ export default {
 
   async execute(client) {
     try {
-      // Force presence update (This fixes the "not showing online" issue)
-      await client.user.setPresence(config.bot.presence);
-      
-      // Extra safety
-      client.user.setStatus("online");
-      client.user.setActivity("Made with ❤️ | /help", { type: 0 });
+      client.user.setPresence(config.bot.presence);
 
-      startupLog(`✅ Ready! Logged in as ${client.user.tag}`);
+      startupLog(`Ready! Logged in as ${client.user.tag}`);
       startupLog(`Serving ${client.guilds.cache.size} guild(s)`);
       startupLog(`Loaded ${client.commands.size} commands`);
 
@@ -26,8 +21,8 @@ export default {
       );
     } catch (error) {
       logger.error("Error in ready event:", error);
-      // Fallback
-      client.user.setStatus("online");
     }
   },
 };
+
+
